@@ -13,3 +13,5 @@ backendSerial/comandos para ligar e desligar ar
 backendSerial/teste.py
 
 backendSerial/teste.txt
+
+.env
