@@ -54,8 +54,9 @@ def readCommand():
 
   if portaSerial.isOpen():
     try:
-      portaSerial.write(b'p');
+      portaSerial.write(b'r');
       incoming = portaSerial.readline()
+      logger.debug(incoming)
     except Exception as e:
       logger.warning(str(e))
       return {"status":str(e)}
