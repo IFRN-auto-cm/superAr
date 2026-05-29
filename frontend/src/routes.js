@@ -38,6 +38,8 @@ Coded by www.creative-tim.com
 // Material Dashboard 2 React layouts
 import Dashboard from "layouts/dashboard";
 import Tables from "layouts/tables";
+import Forms from "layouts/formAr";
+import Commands from "layouts/commands";
 import Billing from "layouts/billing";
 import RTL from "layouts/rtl";
 import Notifications from "layouts/notifications";
@@ -57,14 +59,32 @@ const routes = [
     route: "/dashboard",
     component: <Dashboard />,
   },
-  // {
-  //   type: "collapse",
-  //   name: "Tables",
-  //   key: "tables",
-  //   icon: <Icon fontSize="small">table_view</Icon>,
-  //   route: "/tables",
-  //   component: <Tables />,
-  // },
+  {
+    type: "collapse",
+    name: "Marca e Modelo",
+    key: "marca_modelo",
+    icon: <Icon fontSize="small">assignment</Icon>,
+    route: "/marca_modelo",
+    component: <Forms />,
+  },
+
+  {
+    type: "collapse",
+    name: "Tables",
+    key: "tables",
+    icon: <Icon fontSize="small">table_view</Icon>,
+    route: "/tables",
+    component: <Tables />,
+  },
+
+  {
+    type: "collapse",
+    name: "Comandos",
+    key: "commands",
+    icon: <Icon fontSize="small">table_view</Icon>,
+    route: "/commands",
+    component: <Commands />,
+  },
   // {
   //   type: "collapse",
   //   name: "Billing",
