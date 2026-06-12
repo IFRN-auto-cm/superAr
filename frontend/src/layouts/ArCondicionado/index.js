@@ -61,13 +61,14 @@ function Tables() {
       })
       .then((json) => {
         if (json.status == "ok") {
-          console.log(json);
+          // console.log(json);
           const dados = json.dados;
           const ca = [];
           dados.forEach((arCondicionando) => {
             ca.push({
               id: arCondicionando.id,
               sala: arCondicionando.sala_nome,
+              codigo: arCondicionando.sala_cod,
               temperatura: {
                 referencia: arCondicionando.temperatura_referencia,
                 medicao: "",
@@ -75,6 +76,7 @@ function Tables() {
               status: "desligado",
               marca: arCondicionando.marca,
               modelo: arCondicionando.modelo,
+              atuadorVazio: arCondicionando.atuador == "",
             });
           });
           setCondicionadoresAr(ca);
@@ -104,8 +106,29 @@ function Tables() {
     setExibirEditForm(true);
   };
 
-  const handleOnOff = (id) => {
-    console.log("acionar handle");
+  const handleOnOff = (id, state, temperatura) => {
+    const api = getApiAddress();
+    const cmd = state == "ligado" ? "Desligar" : "ligar " + Math.trunc(temperatura);
+
+    fetch(api.database + "/ar-cadastrados/" + id + "/enviar-comando", {
+      method: "POST",
+      headers: {
+        "Content-type": "application/json; charset=UTF-8",
+      },
+      body: JSON.stringify({
+        comando_nome: cmd,
+      }),
+    })
+      .then((res) => {
+        return res.json();
+      })
+      .then((json) => {
+        if (json.status == "ok") {
+          alert("comando enviado");
+        } else {
+          alert(json.mensagem);
+        }
+      });
   };
 
   // const { columns, rows } = authorsTableData();

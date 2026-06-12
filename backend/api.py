@@ -5,6 +5,9 @@ from flask_cors import CORS
 import MySQLdb
 from MySQLdb.cursors import DictCursor
 import logging
+import paho.mqtt.client as mqtt
+import json
+import re
 
 app = Flask(__name__)
 CORS(app)
@@ -51,6 +54,35 @@ def add_income():
     incomes.append(new_income)
     # Return an empty response with a 204 status code (No Content)
     return '', 204
+
+def normalizar(texto):
+    # Encontra o primeiro número na string
+    numero = re.search(r'\d+', texto)
+
+    if not numero:
+        return re.sub(r'\s+', '', texto).lower()
+
+    numero = numero.group()
+
+    # Remove todos os números
+    descricao = re.sub(r'\d+', '', texto)
+
+    # Remove todos os espaços e converte para minúsculas
+    descricao = re.sub(r'\s+', '', descricao).lower()
+
+    return f"{descricao} {numero}"
+
+def publicar_mqtt(endereco, payload):
+    broker = os.getenv("MQTT_BROKER", "localhost")
+    porta = int(os.getenv("MQTT_PORT", 1883))
+    usuario = os.getenv("USUARIO")
+    senha = os.getenv("SENHA")
+
+    client = mqtt.Client()
+    client.username_pw_set(usuario, senha)
+    client.connect(broker, porta, 60)
+    client.publish("cm/ar/"+endereco+"/cmd", json.dumps(payload))
+    client.disconnect()
 
 def get_db():
     return MySQLdb.connect(
@@ -220,6 +252,8 @@ def inserir_comando():
 
     # return jsonify({"status": "ok", "id": 1})
     nome = data.get("nome")
+
+    nome = normalizar(nome)
 
     if not nome:
         return jsonify({"status": "erro", "mensagem": "nome é obrigatório"}), 400
@@ -422,6 +456,82 @@ def inserir_sala():
     except Exception as erro:
         return jsonify({"status": "erro", "mensagem": str(erro)}), 500
 
+@app.route("/ar-cadastrados/<int:ar_cadastrado_id>/enviar-comando", methods=["POST"])
+def enviar_comando_ar(ar_cadastrado_id):
+    
+    data = request.json   
+    comando_nome = data.get("comando_nome")
+
+    if not comando_nome:
+        return jsonify({
+            "status": "erro",
+            "mensagem": "comando_nome é obrigatório"
+        }), 400
+
+    try:
+        # resultado = []
+        resultado = executar_select(
+            """
+            SELECT
+                ar.id AS ar_id,
+                ar.nome AS ar_nome,
+                ar.atuador,
+                ar.modelo_marca,
+                c.id AS comando_id,
+                c.nome AS comando_nome,
+                mmc.comando_valor
+            FROM ar_cadastrados ar
+            INNER JOIN modelosMarcas_comando mmc
+                ON mmc.modelo_marcas = ar.modelo_marca
+            INNER JOIN comandos c
+                ON c.id = mmc.comando
+            WHERE ar.id = %s
+              AND c.nome = %s
+            """,
+            (ar_cadastrado_id, comando_nome)
+        )
+
+        if len(resultado) == 0:
+            return jsonify({
+                "status": "erro",
+                "mensagem": "Comando não cadastrado para o modelo deste ar-condicionado"
+            }), 404
+
+        dados = resultado[0]
+
+        if not dados["atuador"]:
+            return jsonify({
+                "status": "erro",
+                "mensagem": "Este ar-condicionado não possui atuador cadastrado"
+            }), 400
+
+        vetor = json.loads(dados["comando_valor"])
+        print(len(vetor))   
+        payload = {
+            # "ar_id": dados["ar_id"],
+            # "comando_id": dados["comando_id"],
+            # "comando_nome": dados["comando_nome"],
+            "irCmd": vetor,#dados["comando_valor"],
+            "length": len(vetor)
+        }
+
+        endereco_atuador = dados["atuador"]
+
+        publicar_mqtt(endereco_atuador, payload)
+
+        return jsonify({
+            "status": "ok",
+            "mensagem": "Comando enviado com sucesso",
+            "endereco": endereco_atuador,
+            "payload": payload
+        })
+
+    except Exception as erro:
+        return jsonify({
+            "status": "erro",
+            "mensagem": str(erro)
+        }), 500
+
 @app.route("/salas", methods=["GET"])
 def api_lista_salas():
     salas = lista_salas()
@@ -479,7 +589,8 @@ def getDataToEditFormAr(Ar_id):
                 s.id as sala_id,
                 mm.id as mm_id,
                 mm.marca,
-                mm.modelo
+                mm.modelo,
+                ar.atuador
             FROM ar_cadastrados ar
             LEFT JOIN salas s
                 ON ar.sala = s.id
@@ -679,8 +790,10 @@ def listar_ar_cadastrados():
                 ar.nome AS nome_ar,
                 ar.temperatura_referencia,
                 s.nome AS sala_nome,
+                s.codigo as sala_cod,
                 mm.marca,
-                mm.modelo
+                mm.modelo,
+                ar.atuador
             FROM ar_cadastrados ar
             LEFT JOIN salas s
                 ON ar.sala = s.id
@@ -700,6 +813,13 @@ def listar_ar_cadastrados():
             "status": "erro",
             "mensagem": str(erro)
         }), 500
+
+@app.route("/enviar-comando/<int:ar_cadastrado_id>", methods=["GET"])
+def acionar_comando(ar_cadastrado_id):
+    data = request.json
+
+    comando = request.json["comando"]
+    
 
 if __name__ == '__main__':
     app.run(debug=True)
