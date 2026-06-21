@@ -1,6 +1,8 @@
 [submodule "frontend"]
 	path = frontend
 	url = https://github.com/IFRN-auto-cm/superAr-frontEnd.git
+	branch = master
 [submodule "backend"]
 	path = backend
 	url = https://github.com/IFRN-auto-cm/superAr-backEnd
+	branch = master
