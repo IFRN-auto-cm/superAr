@@ -1,6 +1,6 @@
 # superAr
 
-O projeto SuperAr possui dois submódulos sendo eles: superAr_frontend e o superAr_backend.
+O projeto SuperAr possui dois submódulos sendo eles: superAr_frontEnd e o superAr_backEnd.
 
 Portanto, para clonar o projeto trazendo os submódulos é necessário executar o comando: git clone --recurse-submodules
 
