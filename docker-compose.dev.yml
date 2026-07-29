@@ -14,6 +14,9 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
       - ./database/init:/docker-entrypoint-initdb.d
+    networks:
+      - database_network
+  
   api:
     build: ./backend
     # env_file: ./backend/.env
@@ -21,6 +24,38 @@ services:
       - "5000:5000"
     volumes:
       - ./backend:/app
+    depends_on:
+      - mysql
+
+    networks:
+      - app_network
+      - database_network
+  
+  mqtt:
+    build:
+      context: ./mqtt-service
+
+    restart: unless-stopped
+
+    volumes:
+      - ./mqtt-service:/app
+
+    environment:
+      API_URL: http://api:5000
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN}
+
+      MQTT_BROKER_HOST: ${MQTT_BROKER_HOST}
+      MQTT_BROKER_PORT: ${MQTT_BROKER_PORT}
+      MQTT_TOPIC_STATUS: ${MQTT_TOPIC_STATUS}
+      MQTT_USERNAME: ${MQTT_USERNAME}
+      MQTT_PASSWORD: ${MQTT_PASSWORD}
+
+    depends_on:
+      - api
+
+    networks:
+      - app_network
+  
   frontend:
     build:
       context: ./frontend
@@ -35,5 +70,15 @@ services:
       CHOKIDAR_USEPOLLING: "true"
     depends_on:
       - api
+    networks:
+      - app_network
 volumes:
   mysql_data:
+
+networks:
+  app_network:
+    driver: bridge
+
+  database_network:
+    driver: bridge
+    internal: true
