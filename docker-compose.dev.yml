@@ -16,7 +16,19 @@ services:
       - ./database/init:/docker-entrypoint-initdb.d
     networks:
       - database_network
-  
+
+  redis:
+    image: redis:8-alpine
+    container_name: superar-redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    command: >
+      redis-server
+      --appendonly yes
+
   api:
     build: ./backend
     # env_file: ./backend/.env
@@ -26,6 +38,7 @@ services:
       - ./backend:/app
     depends_on:
       - mysql
+      - redis
 
     networks:
       - app_network
@@ -74,6 +87,7 @@ services:
       - app_network
 volumes:
   mysql_data:
+  redis_data:
 
 networks:
   app_network:
