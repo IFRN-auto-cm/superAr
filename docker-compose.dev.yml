@@ -28,6 +28,8 @@ services:
     command: >
       redis-server
       --appendonly yes
+    networks:
+      - database_network
 
   api:
     build: ./backend
