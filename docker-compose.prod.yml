@@ -1,0 +1,142 @@
+services:
+
+  mysql:
+    image: mysql:8.0
+    container_name: mysql_super_ar
+    restart: unless-stopped
+
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      TZ: ${TZ}
+
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/init:/docker-entrypoint-initdb.d:ro
+
+    networks:
+      - database_network
+
+  redis:
+    image: redis:8-alpine
+    container_name: superar-redis
+    restart: unless-stopped
+
+    volumes:
+      - redis_data:/data
+
+    command: >
+      redis-server
+      --appendonly yes
+
+    networks:
+      - database_network
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+
+    container_name: superar-api
+    restart: unless-stopped
+
+    environment:
+      # suas variáveis do backend aqui
+      # ou utilize env_file
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN}
+
+    # Não expõe 5000 para o host.
+    # Apenas outros containers conseguem acessar.
+    expose:
+      - "5000"
+
+    depends_on:
+      - mysql
+      - redis
+
+    networks:
+      - app_network
+      - database_network
+
+
+  mqtt-broker:
+    image: eclipse-mosquitto:2
+    container_name: superar-mosquitto
+    restart: unless-stopped
+
+    # Precisa continuar exposto porque seus ESPs
+    # precisam acessar o broker pela rede.
+    ports:
+      - "1883:1883"
+
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_log:/mosquitto/log
+
+    networks:
+      - app_network
+
+
+  mqtt:
+    build:
+      context: ./mqtt-service
+      dockerfile: Dockerfile.prod
+
+    container_name: superar-mqtt
+    restart: unless-stopped
+
+    environment:
+      API_URL: http://api:5000
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN}
+
+      MQTT_BROKER_HOST: ${MQTT_BROKER_HOST}
+      MQTT_BROKER_PORT: ${MQTT_BROKER_PORT}
+      MQTT_TOPIC_STATUS: ${MQTT_TOPIC_STATUS}
+      MQTT_TOPIC_AVAILABILITY: ${MQTT_TOPIC_AVAILABILITY}
+      MQTT_USERNAME: ${MQTT_USERNAME}
+      MQTT_PASSWORD: ${MQTT_PASSWORD}
+
+    depends_on:
+      - api
+      - mqtt-broker
+
+    networks:
+      - app_network
+
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+
+    container_name: superar-frontend
+    restart: unless-stopped
+
+    ports:
+      - "80:80"
+
+    depends_on:
+      - api
+
+    networks:
+      - app_network
+
+
+volumes:
+  mysql_data:
+  redis_data:
+  mosquitto_data:
+  mosquitto_log:
+
+
+networks:
+
+  app_network:
+    driver: bridge
+
+  database_network:
+    driver: bridge
+    internal: true
