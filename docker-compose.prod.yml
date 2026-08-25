@@ -19,25 +19,28 @@ services:
     networks:
       - database_network
 
-  # redis:
-  #   image: redis:8-alpine
-  #   container_name: superar-redis
-  #   restart: unless-stopped
+  redis:
+    image: redis:8-alpine
+    container_name: superar-redis
+    restart: unless-stopped
 
-  #   volumes:
-  #     - redis_data:/data
+    volumes:
+      - redis_data:/data
 
-  #   command: >
-  #     redis-server
-  #     --appendonly yes
+    command: >
+      redis-server
+      --appendonly yes
 
-  #   networks:
-  #     - database_network
+    networks:
+      - database_network
 
   api:
     build:
       context: ./backend
       dockerfile: Dockerfile.prod
+
+    env_file:
+      - ./backend/.env
 
     container_name: superar-api
     restart: unless-stopped
@@ -54,63 +57,68 @@ services:
 
     depends_on:
       - mysql
-      # - redis
+      - redis
 
     networks:
       - app_network
       - database_network
 
 
-  # mqtt-broker:
-  #   image: eclipse-mosquitto:2
-  #   container_name: superar-mosquitto
-  #   restart: unless-stopped
+  mqtt-broker:
+    image: eclipse-mosquitto:2
+    container_name: superar-mosquitto
+    restart: unless-stopped
 
-  #   # Precisa continuar exposto porque seus ESPs
-  #   # precisam acessar o broker pela rede.
-  #   ports:
-  #     - "1883:1883"
+    # Precisa continuar exposto porque seus ESPs
+    # precisam acessar o broker pela rede.
+    ports:
+      - "1883:1883"
 
-  #   volumes:
-  #     - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
-  #     - mosquitto_data:/mosquitto/data
-  #     - mosquitto_log:/mosquitto/log
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_log:/mosquitto/log
 
-  #   networks:
-  #     - app_network
+    networks:
+      - app_network
 
 
-  # mqtt:
-  #   build:
-  #     context: ./mqtt-service
-  #     dockerfile: Dockerfile.prod
+  mqtt:
+    build:
+      context: ./mqtt-service
+      dockerfile: Dockerfile.prod
 
-  #   container_name: superar-mqtt
-  #   restart: unless-stopped
+    container_name: superar-mqtt
+    restart: unless-stopped
 
-  #   environment:
-  #     API_URL: http://api:5000
-  #     INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN}
+    environment:
+      API_URL: http://api:5000
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN}
 
-  #     MQTT_BROKER_HOST: ${MQTT_BROKER_HOST}
-  #     MQTT_BROKER_PORT: ${MQTT_BROKER_PORT}
-  #     MQTT_TOPIC_STATUS: ${MQTT_TOPIC_STATUS}
-  #     MQTT_TOPIC_AVAILABILITY: ${MQTT_TOPIC_AVAILABILITY}
-  #     MQTT_USERNAME: ${MQTT_USERNAME}
-  #     MQTT_PASSWORD: ${MQTT_PASSWORD}
+      MQTT_BROKER_PRIMARY_HOST: ${MQTT_BROKER_PRIMARY_HOST}
+      MQTT_BROKER_PRIMARY_PORT: ${MQTT_BROKER_PRIMARY_PORT}
+      MQTT_BROKER_SECONDARY_HOST: ${MQTT_BROKER_SECONDARY_HOST}
+      MQTT_BROKER_SECONDARY_PORT: ${MQTT_BROKER_SECONDARY_PORT}
+      MQTT_TOPIC_STATUS: ${MQTT_TOPIC_STATUS}
+      MQTT_TOPIC_AVAILABILITY: ${MQTT_TOPIC_AVAILABILITY}
+      MQTT_USERNAME: ${MQTT_USERNAME}
+      MQTT_PASSWORD: ${MQTT_PASSWORD}
 
-  #   depends_on:
-  #     - api
-  #     - mqtt-broker
+    depends_on:
+      - api
+      - mqtt-broker
 
-  #   networks:
-  #     - app_network
+    networks:
+      - app_network
 
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile.prod
+      args:
+        REACT_APP_SOCKET_URL: ${REACT_APP_SOCKET_URL}
+        REACT_APP_DATABASE_URL: ${REACT_APP_DATABASE_URL}
 
     container_name: superar-frontend
     restart: unless-stopped
