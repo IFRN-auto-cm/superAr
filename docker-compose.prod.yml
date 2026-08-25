@@ -1,7 +1,7 @@
 services:
 
   mysql:
-    image: mysql:8.0
+    image: mysql:8.0.46-bookworm
     container_name: mysql_super_ar
     restart: unless-stopped
 
