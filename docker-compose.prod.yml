@@ -111,6 +111,9 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.prod
+      args:
+        REACT_APP_SOCKET_URL: ${REACT_APP_SOCKET_URL}
+        REACT_APP_DATABASE_URL: ${REACT_APP_DATABASE_URL}
 
     container_name: superar-frontend
     restart: unless-stopped
