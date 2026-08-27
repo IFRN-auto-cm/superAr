@@ -1,19 +1,21 @@
 services:
+
   mysql:
-    image: mysql:8.0
+    image: mysql:8.0.46-bookworm
     container_name: mysql_super_ar
-    restart: always
+    restart: unless-stopped
+
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
       TZ: ${TZ}
-    ports:
-      - ${MYSQL_HOST_PORT}:${MYSQL_CONTAINER_PORT}
+
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./database/init:/docker-entrypoint-initdb.d
+      - ./database/init:/docker-entrypoint-initdb.d:ro
+
     networks:
       - database_network
 
@@ -21,23 +23,38 @@ services:
     image: redis:8-alpine
     container_name: superar-redis
     restart: unless-stopped
-    ports:
-      - "6380:6379"
+
     volumes:
       - redis_data:/data
+
     command: >
       redis-server
       --appendonly yes
+
     networks:
       - database_network
 
   api:
-    build: ./backend
-    # env_file: ./backend/.env
-    ports:
-      - "5000:5000"
-    volumes:
-      - ./backend:/app
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+
+    env_file:
+      - ./backend/.env
+
+    container_name: superar-api
+    restart: unless-stopped
+
+    environment:
+      # suas variáveis do backend aqui
+      # ou utilize env_file
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN}
+
+    # Não expõe 5000 para o host.
+    # Apenas outros containers conseguem acessar.
+    expose:
+      - "5000"
+
     depends_on:
       - mysql
       - redis
@@ -46,11 +63,14 @@ services:
       - app_network
       - database_network
 
+
   mqtt-broker:
     image: eclipse-mosquitto:2
     container_name: superar-mosquitto
     restart: unless-stopped
 
+    # Precisa continuar exposto porque seus ESPs
+    # precisam acessar o broker pela rede.
     ports:
       - "1883:1883"
 
@@ -62,14 +82,14 @@ services:
     networks:
       - app_network
 
+
   mqtt:
     build:
       context: ./mqtt-service
+      dockerfile: Dockerfile.prod
 
+    container_name: superar-mqtt
     restart: unless-stopped
-
-    volumes:
-      - ./mqtt-service:/app
 
     environment:
       API_URL: http://api:5000
@@ -86,34 +106,42 @@ services:
 
     depends_on:
       - api
+      - mqtt-broker
 
     networks:
       - app_network
-  
+
+
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile.prod
+      args:
+        REACT_APP_SOCKET_URL: ${REACT_APP_SOCKET_URL}
+        REACT_APP_DATABASE_URL: ${REACT_APP_DATABASE_URL}
+
+    container_name: superar-frontend
+    restart: unless-stopped
+
     ports:
-      - "3000:3000"
-    volumes:
-      - ./frontend:/app
-      - frontend_node_modules:/app/node_modules
-    environment:
-      # ajuda bastante em Linux/WSL para o watcher
-      CHOKIDAR_USEPOLLING: "true"
+      - "80:80"
+
     depends_on:
       - api
+
     networks:
       - app_network
+
+
 volumes:
   mysql_data:
   redis_data:
   mosquitto_data:
   mosquitto_log:
-  frontend_node_modules:
+
 
 networks:
+
   app_network:
     driver: bridge
 

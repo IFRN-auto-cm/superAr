@@ -23,3 +23,9 @@ backend/auxilio ao banco/Informação para criação de tabelas no banco
 backend_backup/
 
 frontend_backup/
+
+mqtt-service_backup/Dockerfile
+
+mqtt-service_backup/mqtt_service.py
+
+mqtt-service_backup/requirements.txt
