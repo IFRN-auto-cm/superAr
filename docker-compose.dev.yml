@@ -102,6 +102,8 @@ services:
     environment:
       # ajuda bastante em Linux/WSL para o watcher
       CHOKIDAR_USEPOLLING: "true"
+      REACT_APP_SOCKET_URL: ${REACT_APP_SOCKET_URL}
+      REACT_APP_DATABASE_URL: ${REACT_APP_DATABASE_URL}
     depends_on:
       - api
     networks:
