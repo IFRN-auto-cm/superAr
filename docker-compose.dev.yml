@@ -38,6 +38,15 @@ services:
       - "5000:5000"
     volumes:
       - ./backend:/app
+    environment:
+      #configurações do mqtt mosquitto
+      MQTT_SERVICE_URL: ${MQTT_SERVICE_URL}
+      
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      DB_PORT: ${MYSQL_CONTAINER_PORT}
+      HOST_DATABASE: ${HOST_DATABASE}
     depends_on:
       - mysql
       - redis
