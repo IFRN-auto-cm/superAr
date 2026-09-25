@@ -42,11 +42,15 @@ services:
       #configurações do mqtt mosquitto
       MQTT_SERVICE_URL: ${MQTT_SERVICE_URL}
       
+      #configurações do banco de dados
       MYSQL_DATABASE: ${MYSQL_DATABASE}
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
       DB_PORT: ${MYSQL_CONTAINER_PORT}
       HOST_DATABASE: ${HOST_DATABASE}
+
+      #configuração de acesso
+      SOCKETIO_CORS_ORIGINS: ${SOCKETIO_CORS_ORIGINS}
     depends_on:
       - mysql
       - redis
